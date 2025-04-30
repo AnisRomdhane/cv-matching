@@ -2,3 +2,6 @@ fastapi
 uvicorn
 python-multipart
 pdfminer.six
+scikit-learn
+pdfplumber
+python-docx
