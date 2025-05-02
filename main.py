@@ -1,49 +1,68 @@
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-import pdfplumber
+import PyPDF2
 import io
 
 app = FastAPI()
 
-# CORS middleware to allow requests from any origin
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # You can restrict this to your frontend domain in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Function to extract text from PDF using pdfplumber
-def extract_text_from_pdf(file_bytes: bytes) -> str:
-    # Wrap the byte data into a BytesIO stream
-    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        text = ''
-        for page in pdf.pages:
-            text += page.extract_text() or ''  # Append extracted text from each page
+# Function to extract text from uploaded PDF
+def extract_text_from_pdf(file: bytes) -> str:
+    file_stream = io.BytesIO(file)  # Convert bytes to file-like object
+    pdf_reader = PyPDF2.PdfReader(file_stream)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() or ""
     return text
 
-# Function to calculate match percentage between CV text and job offer text
-def calculate_match(cv_text: str, job_text: str) -> int:
-    cv_words = set(cv_text.lower().split())  # Convert CV text into a set of words
-    job_words = set(job_text.lower().split())  # Convert job offer text into a set of words
-    if not job_words:  # If the job offer has no words, return 0% match
-        return 0
-    matched_words = cv_words.intersection(job_words)  # Find common words
-    match_percentage = int((len(matched_words) / len(job_words)) * 100)  # Calculate percentage
-    return match_percentage
+# Dummy matching function – replace with your own logic
+def match_cv_to_job(cv_text: str, job_text: str) -> dict:
+    # Dummy similarity score based on common words
+    cv_words = set(cv_text.lower().split())
+    job_words = set(job_text.lower().split())
+    match_score = len(cv_words & job_words) / max(len(job_words), 1) * 100
+    return {"match_score": round(match_score, 2)}
 
-# Endpoint to handle the file upload and job offer text input
 @app.post("/match")
-async def match(cv_upload: UploadFile = File(...), job_offer: str = Form(...)):
-    contents = await cv_upload.read()  # Read the file contents
-    # If the uploaded file is a PDF, extract text from it
-    if cv_upload.filename.endswith(".pdf"):
-        cv_text = extract_text_from_pdf(contents)
-    else:
-        # If the file is not PDF, try to decode it as a plain text
-        cv_text = contents.decode("utf-8", errors="ignore")
+async def match(cv: UploadFile = File(...), job: UploadFile = File(...)):
+    try:
+        # Read file contents as bytes
+        cv_content = await cv.read()
+        job_content = await job.read()
 
-    # Calculate the match score between the CV and the job offer text
-    score = calculate_match(cv_text, job_offer)
-    return {"match_percentage": score}  # Return the match percentage
+        # Extract text
+        cv_text = extract_text_from_pdf(cv_content)
+        job_text = extract_text_from_pdf(job_content)
+
+        # Perform matching
+        result = match_cv_to_job(cv_text, job_text)
+
+        return {"result": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/")
+def root():
+    return {"message": "CV Matcher API is running."}
+
+
+
+
+
+# Dummy candidate data example
+@app.get("/historique")
+def get_historique(user_id: str):
+    return {
+        "statut_profil": "Actif",
+        "dernier_pipeline": "2025-04-12",
+        "candidatures_envoyees": 20,
+        "taux_matching": "75%"
+    }
