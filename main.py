@@ -2,42 +2,53 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import PyPDF2
 import io
+from sentence_transformers import SentenceTransformer
+import numpy as np
 
 app = FastAPI()
 
-# Allow frontend to access backend (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with your domain in production
+    allow_origins=["*"],  # restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Extract text from uploaded PDF
-def extract_text_from_pdf(file: bytes) -> str:
-    file_stream = io.BytesIO(file)
+model = SentenceTransformer('all-MiniLM-L6-v2')  # lightweight & fast model
+
+def extract_text_from_pdf(file_bytes: bytes) -> str:
+    file_stream = io.BytesIO(file_bytes)
     pdf_reader = PyPDF2.PdfReader(file_stream)
     text = ""
     for page in pdf_reader.pages:
         text += page.extract_text() or ""
     return text
 
-# Match function using shared words
-def match_cv_to_job(cv_text: str, job_text: str) -> float:
-    cv_words = set(cv_text.lower().split())
-    job_words = set(job_text.lower().split())
-    score = len(cv_words & job_words) / max(len(job_words), 1) * 100
-    return round(score, 2)
+def get_embedding(text: str):
+    return model.encode([text])[0]
 
-# ✅ Main endpoint with correct response format
+def cosine_similarity(vec1, vec2):
+    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
 @app.post("/match")
-async def match(cv: UploadFile = File(...), job_desc: str = Form(...)):
+async def match(
+    cv: UploadFile = File(...),
+    job_offer: str = Form(...)
+):
     try:
         cv_content = await cv.read()
         cv_text = extract_text_from_pdf(cv_content)
-        score = match_cv_to_job(cv_text, job_desc)
-        return {"match_percentage": score}  # ✅ What the frontend expects
+
+        job_text = job_offer
+
+        cv_embedding = get_embedding(cv_text)
+        job_embedding = get_embedding(job_text)
+
+        score = cosine_similarity(cv_embedding, job_embedding) * 100
+
+        return {"match_percentage": round(score, 2)}
+
     except Exception as e:
         return {"error": str(e)}
 
