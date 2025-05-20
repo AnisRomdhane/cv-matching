@@ -47,7 +47,7 @@ async def match(
 
         score = cosine_similarity(cv_embedding, job_embedding) * 100
 
-        return {"match_percentage": round(score, 2)}
+        return {"match_percentage": float(round(score, 2))}
 
     except Exception as e:
         return {"error": str(e)}
