@@ -47,7 +47,7 @@ async def match(
 
         score = cosine_similarity(cv_embedding, job_embedding) * 100
 
-        return {"match_percentage": float(round(score, 2))}
+        return {"match_percentage": round(score, 1)}
 
     except Exception as e:
         return {"error": str(e)}
@@ -61,6 +61,6 @@ def get_historique(user_id: str):
     return {
         "statut_profil": "Actif",
         "dernier_pipeline": "2025-04-12",
-        "candidatures_envoyees": 20,
+        "candidatures_envoyees": 2,
         "taux_matching": "75%"
     }
