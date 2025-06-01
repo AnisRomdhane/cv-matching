@@ -46,8 +46,12 @@ async def match(
         job_embedding = get_embedding(job_text)
 
         score = cosine_similarity(cv_embedding, job_embedding) * 100
+        rounded_score = round(score, 2)
 
-        return {"match_percentage": float(round(score, 2))}
+        return {
+            "match_percentage": f"{rounded_score}%",
+            "match_score_float": score  # keep raw float for further processing
+        }
 
     except Exception as e:
         return {"error": str(e)}
@@ -63,4 +67,4 @@ def get_historique(user_id: str):
         "dernier_pipeline": "2025-04-12",
         "candidatures_envoyees": 1,
         "taux_matching": "75%"
-    } 
+    }
