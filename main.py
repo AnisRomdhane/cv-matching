@@ -63,4 +63,4 @@ def get_historique(user_id: str):
         "dernier_pipeline": "2025-04-12",
         "candidatures_envoyees": 1,
         "taux_matching": "75%"
-    }
+    } 
