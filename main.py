@@ -46,12 +46,9 @@ async def match(
         job_embedding = get_embedding(job_text)
 
         score = cosine_similarity(cv_embedding, job_embedding) * 100
-        rounded_score = round(score, 2)
+        rounded_score = float(f"{score:.2f}")
 
-        return {
-            "match_percentage": f"{rounded_score}%",
-            "match_score_float": score  # keep raw float for further processing
-        }
+        return {"match_percentage": rounded_score}
 
     except Exception as e:
         return {"error": str(e)}
